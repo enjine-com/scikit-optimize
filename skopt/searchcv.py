@@ -115,11 +115,6 @@ class BayesSearchCV(BaseSearchCV):
             - A string, giving an expression as a function of n_jobs,
               as in '2*n_jobs'
 
-    iid : boolean, default=True
-        If True, the data is assumed to be identically distributed across
-        the folds, and the loss minimized is the total loss per sample,
-        and not the mean loss across the folds.
-
     cv : int, cross-validation generator or an iterable, optional
         Determines the cross-validation splitting strategy.
         Possible inputs for cv are:
@@ -289,7 +284,7 @@ class BayesSearchCV(BaseSearchCV):
 
     def __init__(self, estimator, search_spaces, optimizer_kwargs=None,
                  n_iter=50, scoring=None, fit_params=None, n_jobs=1,
-                 n_points=1, iid=True, refit=True, cv=None, verbose=0,
+                 n_points=1, refit=True, cv=None, verbose=0,
                  pre_dispatch='2*n_jobs', random_state=None,
                  error_score='raise', return_train_score=False):
 
@@ -307,7 +302,7 @@ class BayesSearchCV(BaseSearchCV):
 
         super(BayesSearchCV, self).__init__(
              estimator=estimator, scoring=scoring,
-             n_jobs=n_jobs, iid=iid, refit=refit, cv=cv, verbose=verbose,
+             n_jobs=n_jobs, refit=refit, cv=cv, verbose=verbose,
              pre_dispatch=pre_dispatch, error_score=error_score,
              return_train_score=return_train_score)
 
@@ -424,11 +419,12 @@ class BayesSearchCV(BaseSearchCV):
 
         # if one choose to see train score, "out" will contain train score info
         if self.return_train_score:
-            (train_scores, test_scores, test_sample_counts,
-             fit_time, score_time, parameters) = zip(*out)
-        else:
-            (test_scores, test_sample_counts,
-             fit_time, score_time, parameters) = zip(*out)
+            train_scores = [o['train_scores'] for o in out]
+        test_scores = [o['test_scores'] for o in out]
+        test_sample_counts = [o['n_test_samples'] for o in out]
+        fit_time = [o['fit_time'] for o in out]
+        score_time = [o['score_time'] for o in out]
+        parameters = [o['parameters'] for o in out]        
 
         candidate_params = parameters[::n_splits]
         n_candidates = len(candidate_params)
@@ -462,7 +458,7 @@ class BayesSearchCV(BaseSearchCV):
                                       dtype=np.int)
 
         _store('test_score', test_scores, splits=True, rank=True,
-               weights=test_sample_counts if self.iid else None)
+               weights=test_sample_counts)
         if self.return_train_score:
             _store('train_score', train_scores, splits=True)
         _store('fit_time', fit_time)
